@@ -1,8 +1,8 @@
 package brandHandler
 
 import (
-	"backend/database"
-	"backend/internal/model"
+	"api-merch-mwit/database"
+	"api-merch-mwit/internal/model"
 
 	"github.com/gofiber/fiber/v2"
 )

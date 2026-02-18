@@ -1,46 +1,57 @@
 package database
 
 import (
-	"backend/internal/model"
+	"api-merch-mwit/internal/model"
 	"fmt"
+	"log"
+	"os"
+	"time"
 
-	_ "github.com/mattn/go-sqlite3"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
 
-func ConnectDB() {
+func Connect() {
 	var err error
-	DB, err = gorm.Open(sqlite.Open("StoreDb.db"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
-	if err != nil {
-		panic("failed to connect database")
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = "host=localhost user=postgres password=password dbname=merch_db port=5432 sslmode=disable"
 	}
-	fmt.Println("Database connected successfully.")
 
-	// Migrate the database
-	migrateErr := DB.AutoMigrate(
+	// Retry connection for docker startup
+	for i := 0; i < 5; i++ {
+		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		if err == nil {
+			break
+		}
+		log.Printf("Failed to connect to database, retrying in 5s... (%d/5)", i+1)
+		time.Sleep(5 * time.Second)
+	}
+
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
+	fmt.Println("Connected to PostgreSQL database")
+
+	// Auto Migrate
+	err = DB.AutoMigrate(
+		&model.User{},
 		&model.Brand{},
 		&model.Item{},
 		&model.Image{},
-		&model.Color{},
 		&model.Size{},
-		&model.User{},
+		&model.Color{},
 		&model.Preorder{},
 		&model.Page{},
-		&model.Site{},
+		&model.PaymentAccount{},
 	)
-	if migrateErr != nil {
-		panic(migrateErr.Error())
+	if err != nil {
+		log.Fatal("Migration failed:", err)
 	}
-
-	// Pre-populate database
-	DB.FirstOrCreate(&model.Site{Image_url: ""})
-	DB.FirstOrCreate(&model.Page{Slug: "pre-orders", Text: "Pre Orders", Is_Permanent: 1, Order: 1})
-
-	fmt.Println("Database migrated.")
 }

@@ -1,8 +1,8 @@
 package siteRoutes
 
 import (
-	siteHandler "backend/internal/handler/site"
-	"backend/internal/middleware"
+	siteHandler "api-merch-mwit/internal/handler/site"
+	"api-merch-mwit/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )

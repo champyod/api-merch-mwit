@@ -1,8 +1,8 @@
 package main
 
 import (
-	"backend/database"
-	"backend/router"
+	"api-merch-mwit/database"
+	"api-merch-mwit/router"
 	"log"
 	"os"
 

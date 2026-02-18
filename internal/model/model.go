@@ -1,6 +1,21 @@
 package model
 
-import "gorm.io/gorm"
+import (
+	"time"
+	"gorm.io/gorm"
+)
+
+// PaymentAccount defines who receives the money for a specific product
+type PaymentAccount struct {
+	ID          uint           `gorm:"primarykey" json:"id"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+	Name        string         `json:"name"`
+	PromptpayID string         `json:"promptpay_id"`
+	IsActive    bool           `json:"is_active" gorm:"default:true"`
+	Items       []Item         `gorm:"foreignKey:PaymentAccountID" json:"items,omitempty"`
+}
 
 type Brand struct {
 	gorm.Model
@@ -22,17 +37,18 @@ type Item struct {
 	Colors                 []Color `json:"colors"`
 	Sizes                  []Size  `json:"sizes"`
 	Brand_id               uint    `json:"brand_id"`
-	Brand                  Brand
-	Preorders              []Preorder
-	Page                   Page
-	Page_id                uint `json:"page_id"`
+	Brand                  Brand   `json:"brand"`
+	Page_id                uint    `json:"page_id"`
+	
+	// New: Link to Payment Account
+	PaymentAccountID uint            `json:"payment_account_id"`
+	PaymentAccount   *PaymentAccount `json:"payment_account,omitempty"`
 }
 
 type Image struct {
 	gorm.Model
 	Url     string `json:"url"`
 	Item_id uint   `json:"item_id"`
-	Item    Item
 }
 
 type Size struct {
@@ -40,22 +56,19 @@ type Size struct {
 	Type     string `json:"type"`
 	Quantity int    `json:"quantity"`
 	Item_id  uint   `json:"item_id"`
-	Item     Item
-	Color_id uint `json:"color_id"`
-	Color    Color
+	Color_id uint   `json:"color_id"`
 }
 
 type Color struct {
 	gorm.Model
 	Color   string `json:"color"`
 	Item_id uint   `json:"item_id"`
-	Item    Item
 }
 
 type User struct {
 	gorm.Model
 	Username string `json:"username" gorm:"unique"`
-	Password string `json:"password"`
+	Password string `json:"password" json:"-"`
 	Role     string `json:"role"`
 }
 
@@ -65,20 +78,18 @@ type Preorder struct {
 	Social        string `json:"social"`
 	Size          string `json:"size"`
 	Color         string `json:"color"`
-	Completed     int    `json:"completed"     gorm:"default:0"`
+	Completed     int    `json:"completed" gorm:"default:0"`
 	Item_id       uint   `json:"item_id"`
-	Item          Item
+	Item          Item   `json:"item"`
+	
+	// New: Payment Slip URL
+	PaymentSlipURL string `json:"payment_slip_url"`
 }
 
 type Page struct {
 	gorm.Model
-	Slug         string `json:"slug"         gorm:"unique"`
+	Slug         string `json:"slug" gorm:"unique"`
 	Text         string `json:"text"`
 	Order        int    `json:"order"`
 	Is_Permanent int    `json:"is_permanent"`
-}
-
-type Site struct {
-	gorm.Model
-	Image_url string `json:"image_url"`
 }

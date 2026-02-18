@@ -1,9 +1,9 @@
 package productHandler
 
 import (
-	"backend/database"
-	session "backend/internal"
-	"backend/internal/model"
+	"api-merch-mwit/database"
+	session "api-merch-mwit/internal"
+	"api-merch-mwit/internal/model"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -80,18 +80,19 @@ func UpdateProduct(c *fiber.Ctx) error {
 		Sizes []Size `json:"sizes"`
 	}
 	type Product struct {
-		Title         string      `json:"title"`
-		PageId        int         `json:"pageId"`
-		Brand         string      `json:"brand"`
-		Price         float32     `json:"price"`
-		Discount      float32     `json:"discount"`
-		Discount_type string      `json:"discount_type"`
-		Description   string      `json:"description"`
-		Material      string      `json:"material"`
-		Is_preorder   bool        `json:"isPreorder"`
-		Hidden        bool        `json:"hidden"`
-		ImageURLs     []string    `json:"imageURLs"`
-		ColorSizeArr  []ColorSize `json:"colorSizeArr"`
+		Title            string      `json:"title"`
+		PageId           int         `json:"pageId"`
+		Brand            string      `json:"brand"`
+		Price            float32     `json:"price"`
+		Discount         float32     `json:"discount"`
+		Discount_type    string      `json:"discount_type"`
+		Description      string      `json:"description"`
+		Material         string      `json:"material"`
+		Is_preorder      bool        `json:"isPreorder"`
+		Hidden           bool        `json:"hidden"`
+		ImageURLs        []string    `json:"imageURLs"`
+		ColorSizeArr     []ColorSize `json:"colorSizeArr"`
+		PaymentAccountID uint        `json:"payment_account_id"`
 	}
 
 	product := new(Product)
@@ -114,18 +115,6 @@ func UpdateProduct(c *fiber.Ctx) error {
 
 	// Update product in db
 	// Create new item
-	type Item struct {
-		Brand_id      uint    `json:"brand_id"`
-		Description   string  `json:"description"`
-		Title         string  `json:"title"`
-		Price         float32 `json:"price"`
-		Discount      float32 `json:"discount"`
-		Discount_type string  `json:"discount_type"`
-		Is_preorder   int     `json:"is_preorder"`
-		Hidden        int     `json:"hidden"`
-		Material      string  `json:"material"`
-		Page_id       int     `json:"page_id"`
-	}
 	isPreorder := 0
 	if product.Is_preorder {
 		isPreorder = 1
@@ -158,6 +147,7 @@ func UpdateProduct(c *fiber.Ctx) error {
 	item.Hidden = 0
 	item.Is_preorder = isPreorder
 	item.Hidden = hidden
+	item.PaymentAccountID = product.PaymentAccountID
 	if err := db.Save(&item).Error; err != nil {
 		log.Fatalf("error updating item: %v \n", err)
 		return c.Status(500).
@@ -274,18 +264,19 @@ func AddProduct(c *fiber.Ctx) error {
 		Sizes []Size `json:"sizes"`
 	}
 	type Product struct {
-		Title         string      `json:"title"`
-		PageId        int         `json:"pageId"`
-		Brand         string      `json:"brand"`
-		Price         float32     `json:"price"`
-		Discount      float32     `json:"discount"`
-		Discount_type string      `json:"discount_type"`
-		Description   string      `json:"description"`
-		Material      string      `json:"material"`
-		Is_preorder   bool        `json:"isPreorder"`
-		Hidden        bool        `json:"hidden"`
-		ImageURLs     []string    `json:"imageURLs"`
-		ColorSizeArr  []ColorSize `json:"colorSizeArr"`
+		Title            string      `json:"title"`
+		PageId           int         `json:"pageId"`
+		Brand            string      `json:"brand"`
+		Price            float32     `json:"price"`
+		Discount         float32     `json:"discount"`
+		Discount_type    string      `json:"discount_type"`
+		Description      string      `json:"description"`
+		Material         string      `json:"material"`
+		Is_preorder      bool        `json:"isPreorder"`
+		Hidden           bool        `json:"hidden"`
+		ImageURLs        []string    `json:"imageURLs"`
+		ColorSizeArr     []ColorSize `json:"colorSizeArr"`
+		PaymentAccountID uint        `json:"payment_account_id"`
 	}
 
 	product := new(Product)
@@ -307,17 +298,6 @@ func AddProduct(c *fiber.Ctx) error {
 	}
 
 	// Create new item, then return `items.id`
-	type Item struct {
-		Brand_id      uint    `json:"brand_id"`
-		Description   string  `json:"description"`
-		Title         string  `json:"title"`
-		Price         float32 `json:"price"`
-		Discount      float32 `json:"discount"`
-		Discount_type string  `json:"discount_type"`
-		Is_preorder   int     `json:"is_preorder"`
-		Hidden        int     `json:"hidden"`
-		Material      string  `json:"material"`
-	}
 	isPreorder := 0
 	if product.Is_preorder {
 		isPreorder = 1
@@ -347,6 +327,7 @@ func AddProduct(c *fiber.Ctx) error {
 		Hidden:                 hidden,
 		Is_preorder:            isPreorder,
 		Last_edited_by_user_id: userId,
+		PaymentAccountID:       product.PaymentAccountID,
 	}
 	if err := db.Create(&item).Error; err != nil {
 		log.Fatalf("error inserting item: %v \n", err)

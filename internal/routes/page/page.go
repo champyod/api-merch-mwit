@@ -1,8 +1,8 @@
 package pageRoutes
 
 import (
-	pageHandler "backend/internal/handler/page"
-	"backend/internal/middleware"
+	pageHandler "api-merch-mwit/internal/handler/page"
+	"api-merch-mwit/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )

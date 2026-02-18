@@ -1,8 +1,8 @@
 package preorderRoutes
 
 import (
-	preorderHandler "backend/internal/handler/preorder"
-	"backend/internal/middleware"
+	preorderHandler "api-merch-mwit/internal/handler/preorder"
+	"api-merch-mwit/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )

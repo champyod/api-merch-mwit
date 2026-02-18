@@ -1,7 +1,7 @@
 package brandRoutes
 
 import (
-	brandHandler "backend/internal/handler/brand"
+	brandHandler "api-merch-mwit/internal/handler/brand"
 
 	"github.com/gofiber/fiber/v2"
 )

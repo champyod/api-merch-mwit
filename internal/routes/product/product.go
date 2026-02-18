@@ -1,8 +1,8 @@
 package productRoutes
 
 import (
-	productHandler "backend/internal/handler/product"
-	"backend/internal/middleware"
+	productHandler "api-merch-mwit/internal/handler/product"
+	"api-merch-mwit/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )

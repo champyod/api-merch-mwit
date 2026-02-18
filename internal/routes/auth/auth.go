@@ -1,8 +1,8 @@
 package authRoutes
 
 import (
-	authHandler "backend/internal/handler/auth"
-	"backend/internal/middleware"
+	authHandler "api-merch-mwit/internal/handler/auth"
+	"api-merch-mwit/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )

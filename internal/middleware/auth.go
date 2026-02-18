@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	session "backend/internal"
+	session "api-merch-mwit/internal"
 
 	"github.com/gofiber/fiber/v2"
 )

@@ -1,9 +1,9 @@
 package pageHandler
 
 import (
-	"backend/database"
-	session "backend/internal"
-	"backend/internal/model"
+	"api-merch-mwit/database"
+	session "api-merch-mwit/internal"
+	"api-merch-mwit/internal/model"
 
 	"github.com/gofiber/fiber/v2"
 )

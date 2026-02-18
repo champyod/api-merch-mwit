@@ -1,49 +1,24 @@
 package preorderHandler
 
 import (
-	"backend/database"
-	_ "backend/database"
-	session "backend/internal"
-	"backend/internal/model"
-	_ "backend/internal/model"
-	"bytes"
-	"encoding/json"
+	"api-merch-mwit/database"
+	"api-merch-mwit/internal/model"
+	"api-merch-mwit/internal/utils"
+	"encoding/csv"
 	"fmt"
-	"log"
-	"net/http"
-	"os"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-var store = session.Store
-
 func GetPreorders(c *fiber.Ctx) error {
 	db := database.DB
-
-	type Preorder struct {
-		Created_at    time.Time `json:"created_at"`
-		Customer_name string    `json:"customer_name"`
-		Social        string    `json:"social"`
-		Size          string    `json:"size"`
-		Color         string    `json:"color"`
-		Url           string    `json:"image_url"`
-		Title         string    `json:"title"`
-		Completed     int       `json:"completed"`
-		Item_id       uint      `json:"item_id"`
-		Id            uint      `json:"id"`
+	var preorders []model.Preorder
+	if err := db.Preload("Item").Order("created_at DESC").Find(&preorders).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch preorders"})
 	}
-	var preorders []Preorder
-	db.Table("preorders").Joins("JOIN items ON items.id=preorders.item_id").
-		Joins("JOIN images ON images.item_id=items.id").
-		Select("preorders.id, preorders.created_at, images.url, customer_name, social, size, items.title, items.id as item_id, preorders.completed, preorders.color").
-		Order("preorders.created_at DESC").
-		Group("items.id, preorders.id").
-		Scan(&preorders)
-
-	return c.JSON(fiber.Map{"hasError": false, "metadata": nil, "errorMessage": "", "payload": preorders})
+	return c.JSON(fiber.Map{"hasError": false, "payload": preorders})
 }
 
 func AddPreorder(c *fiber.Ctx) error {
@@ -57,12 +32,16 @@ func AddPreorder(c *fiber.Ctx) error {
 	}
 	var body Body
 	if err := c.BodyParser(&body); err != nil {
-		log.Fatalf("invalid input %v \n", err)
-		return c.Status(400).JSON(fiber.Map{"hasError": true, "metadata": nil, "errorMessage": "Invalid input", "payload": nil})
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
 	}
 
-	// Insert `preorder` to db
 	itemId, _ := strconv.Atoi(body.ItemId)
+	
+	var item model.Item
+	if err := db.Preload("PaymentAccount").First(&item, itemId).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Product not found"})
+	}
+
 	preorder := model.Preorder{
 		Customer_name: body.Name,
 		Social:        body.Social,
@@ -70,34 +49,23 @@ func AddPreorder(c *fiber.Ctx) error {
 		Color:         body.Color,
 		Item_id:       uint(itemId),
 	}
+	
 	if err := db.Create(&preorder).Error; err != nil {
-		return c.Status(500).
-			JSON(fiber.Map{"hasError": true, "metadata": nil, "errorMessage": "Internal server error", "payload": nil})
+		return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
 	}
 
-	var item model.Item
-	db.Where("id = ?", preorder.Item_id).Find(&item)
-
-	// Send notification to Discord
-	DISCORD_WEBHOOK_URL := os.Getenv("DISCORD_WEBHOOK_URL")
-	content := fmt.Sprintf(
-		"-----\n**NEW PREORDER** for _%s_\n**NAME:** %s\n**SOCIAL:** %s\n**SIZE:** %s\n**COLOR:** %s\n-----",
-		item.Title,
-		preorder.Customer_name,
-		preorder.Social,
-		preorder.Size,
-		preorder.Color,
-	)
-	data := map[string]string{"content": content}
-	jsonData, _ := json.Marshal(data)
-
-	resp, err := http.Post(DISCORD_WEBHOOK_URL, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		log.Fatal(err)
+	promptpayID := "0812345678"
+	if item.PaymentAccount != nil && item.PaymentAccount.PromptpayID != "" {
+		promptpayID = item.PaymentAccount.PromptpayID
 	}
-	defer resp.Body.Close()
+	
+	payload := utils.GeneratePromptPayPayload(promptpayID, float64(item.Price))
 
-	return c.JSON(fiber.Map{"hasError": false, "metadata": nil, "errorMessage": "", "payload": body})
+	return c.JSON(fiber.Map{
+		"preorder":         preorder,
+		"payment_payload":  payload,
+		"amount":           item.Price,
+	})
 }
 
 func CompletePreorder(c *fiber.Ctx) error {
@@ -105,9 +73,66 @@ func CompletePreorder(c *fiber.Ctx) error {
 	preorderId := c.Params("preorderId")
 
 	if err := db.Model(&model.Preorder{}).Where("id = ?", preorderId).Update("completed", 1).Error; err != nil {
-		return c.Status(500).
-			JSON(fiber.Map{"hasError": true, "metadata": nil, "errorMessage": "Internal server error", "payload": nil})
+		return c.Status(500).JSON(fiber.Map{"error": "Internal server error"})
 	}
 
-	return c.JSON(fiber.Map{"hasError": false, "metadata": nil, "errorMessage": "", "payload": nil})
+	return c.JSON(fiber.Map{"success": true})
+}
+
+func ExportPreorders(c *fiber.Ctx) error {
+	db := database.DB
+	var preorders []model.Preorder
+	
+	// Preload everything for a complete report
+	if err := db.Preload("Item.PaymentAccount").Order("created_at DESC").Find(&preorders).Error; err != nil {
+		return c.Status(500).SendString("Export failed")
+	}
+
+	c.Set("Content-Type", "text/csv")
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=preorders_%s.csv", time.Now().Format("2006-01-02")))
+
+	writer := csv.NewWriter(c)
+	defer writer.Flush()
+
+	// Header
+	writer.Write([]string{
+		"Order ID", "Date", "Status", "Customer Name", "Social", "Product", "Size", "Color", "Price", "Payment Account", "PromptPay ID",
+	})
+
+	for _, p := range preorders {
+		status := "Pending"
+		if p.Completed == 1 {
+			status = "Completed"
+		}
+		
+		price := "0"
+		productTitle := "Unknown"
+		accountName := "N/A"
+		ppId := "N/A"
+		
+		if p.Item.ID != 0 {
+			productTitle = p.Item.Title
+			price = fmt.Sprintf("%.2f", p.Item.Price)
+			if p.Item.PaymentAccount != nil {
+				accountName = p.Item.PaymentAccount.Name
+				ppId = p.Item.PaymentAccount.PromptpayID
+			}
+		}
+
+		writer.Write([]string{
+			strconv.FormatUint(uint64(p.ID), 10),
+			p.CreatedAt.Format("2006-01-02 15:04"),
+			status,
+			p.Customer_name,
+			p.Social,
+			productTitle,
+			p.Size,
+			p.Color,
+			price,
+			accountName,
+			ppId,
+		})
+	}
+
+	return nil
 }

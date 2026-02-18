@@ -1,9 +1,9 @@
 package authHandler
 
 import (
-	"backend/database"
-	session "backend/internal"
-	"backend/internal/model"
+	"api-merch-mwit/database"
+	session "api-merch-mwit/internal"
+	"api-merch-mwit/internal/model"
 	"log"
 
 	"github.com/go-playground/validator/v10"
