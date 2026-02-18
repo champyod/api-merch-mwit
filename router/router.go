@@ -1,13 +1,14 @@
 package router
 
 import (
-	"api-merch-mwit/internal/handler/auth"
-	"api-merch-mwit/internal/handler/brand"
-	"api-merch-mwit/internal/handler/page"
-	"api-merch-mwit/internal/handler/payment"
-	"api-merch-mwit/internal/handler/preorder"
-	"api-merch-mwit/internal/handler/product"
-	"api-merch-mwit/internal/handler/site"
+	authHandler "api-merch-mwit/internal/handler/auth"
+	brandHandler "api-merch-mwit/internal/handler/brand"
+	orderHandler "api-merch-mwit/internal/handler/order"
+	pageHandler "api-merch-mwit/internal/handler/page"
+	paymentHandler "api-merch-mwit/internal/handler/payment"
+	preorderHandler "api-merch-mwit/internal/handler/preorder"
+	productHandler "api-merch-mwit/internal/handler/product"
+	siteHandler "api-merch-mwit/internal/handler/site"
 	"api-merch-mwit/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,20 +20,27 @@ func SetupRoutes(app *fiber.App) {
 
 	api := app.Group("/api")
 
-	// Auth
-	authGroup := api.Group("/auth")
-	authGroup.Post("/login", authHandler.Login)
-	authGroup.Post("/register", authHandler.Register)
+	// Auth (public)
+	auth := api.Group("/auth")
+	auth.Get("/google", authHandler.GoogleLogin)
+	auth.Get("/google/callback", authHandler.GoogleCallback)
+	auth.Get("/me", middleware.JWTAuth, authHandler.GetMe)
+	auth.Post("/logout", middleware.JWTAuth, authHandler.Logout)
 
 	// Public Products
 	api.Get("/products", productHandler.GetItems)
 	api.Get("/products/:itemId", productHandler.GetItem)
 
-	// Preorders
-	api.Post("/preorders", preorderHandler.AddPreorder)
+	// Preorders (with optional auth)
+	api.Post("/preorders", middleware.OptionalJWTAuth, preorderHandler.AddPreorder)
 
-	// Admin (Protected)
-	admin := api.Group("/admin", middleware.Auth)
+	// Customer orders (JWT protected)
+	me := api.Group("/me", middleware.JWTAuth)
+	me.Get("/orders", orderHandler.GetMyOrders)
+	me.Get("/orders/:id", orderHandler.GetMyOrder)
+
+	// Admin (JWT + role=admin)
+	admin := api.Group("/admin", middleware.JWTAuth, middleware.AdminOnly)
 
 	// Product management
 	admin.Post("/products", productHandler.AddItem)
@@ -47,6 +55,7 @@ func SetupRoutes(app *fiber.App) {
 	// Preorder management
 	admin.Get("/preorders", preorderHandler.GetPreorders)
 	admin.Get("/preorders/export", preorderHandler.ExportPreorders)
+	admin.Put("/preorders/:id/status", preorderHandler.UpdateStatus)
 	admin.Put("/preorders/:preorderId/complete", preorderHandler.CompletePreorder)
 
 	// Other template routes

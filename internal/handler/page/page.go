@@ -10,7 +10,7 @@ import (
 
 var store = session.Store
 
-func GetMenuNavLinks(c *fiber.Ctx) error {
+func GetPages(c *fiber.Ctx) error {
 	db := database.DB
 	var links []model.Page
 

@@ -16,9 +16,9 @@ type Size struct {
 	Quantity int    `json:"quantity"`
 }
 
-func GetProduct(c *fiber.Ctx) error {
+func GetItem(c *fiber.Ctx) error {
 	db := database.DB
-	productId := c.Params("productId")
+	productId := c.Params("itemId")
 
 	type Image struct {
 		Url string `json:"url"`
@@ -67,13 +67,13 @@ func GetProduct(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"hasError": false, "metadata": nil, "errorMessage": "", "payload": &product})
 }
 
-func UpdateProduct(c *fiber.Ctx) error {
+func EditItem(c *fiber.Ctx) error {
 	session, err := store.Get(c)
 	if err != nil {
 		log.Fatalf("error getting session store: %v", err)
 	}
 	db := database.DB
-	productId := c.Params("productId")
+	productId := c.Params("itemId")
 
 	type ColorSize struct {
 		Color string `json:"color"`
@@ -205,7 +205,7 @@ func UpdateProduct(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"hasError": false, "metadata": nil, "errorMessage": "", "payload": &product})
 }
 
-func GetProducts(c *fiber.Ctx) error {
+func GetItems(c *fiber.Ctx) error {
 	type Item struct {
 		ID                      int     `json:"id"`
 		Name                    string  `json:"name"`
@@ -252,7 +252,7 @@ func GetProducts(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"hasError": false, "metadata": nil, "errorMessage": "", "payload": &items})
 }
 
-func AddProduct(c *fiber.Ctx) error {
+func AddItem(c *fiber.Ctx) error {
 	session, err := store.Get(c)
 	if err != nil {
 		log.Fatalf("error getting session store: %v", err)
@@ -372,9 +372,9 @@ func AddProduct(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"hasError": false, "metadata": nil, "errorMessage": "", "payload": &product})
 }
 
-func DeleteProduct(c *fiber.Ctx) error {
+func DeleteItem(c *fiber.Ctx) error {
 	db := database.DB
-	productId := c.Params("productId")
+	productId := c.Params("itemId")
 
 	if err := db.Unscoped().Delete(&model.Item{}, productId).Error; err != nil {
 		return c.Status(500).

@@ -39,17 +39,25 @@ func Connect() {
 
 	fmt.Println("Connected to PostgreSQL database")
 
+	// Enable uuid-ossp extension
+	err = DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error
+	if err != nil {
+		log.Fatal("Failed to enable uuid-ossp extension:", err)
+	}
+
 	// Auto Migrate
 	err = DB.AutoMigrate(
-		&model.User{},
+		&model.Customer{},
 		&model.Brand{},
 		&model.Item{},
 		&model.Image{},
 		&model.Size{},
 		&model.Color{},
 		&model.Preorder{},
+		&model.OrderItem{},
 		&model.Page{},
 		&model.PaymentAccount{},
+		&model.Site{},
 	)
 	if err != nil {
 		log.Fatal("Migration failed:", err)

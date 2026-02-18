@@ -49,7 +49,9 @@ func main() {
 	app.Get("/metrics", monitor.New(monitor.Config{Title: "Backend Metrics"}))
 
 	// Connect DB
-	database.ConnectDB()
+	database.Connect()
+
+	app.Static("/uploads", "./public/uploads")
 
 	router.SetupRoutes(app)
 

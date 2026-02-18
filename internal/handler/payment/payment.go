@@ -9,7 +9,31 @@ import (
 func GetAccounts(c *fiber.Ctx) error {
 	db := database.DB
 	var accounts []model.PaymentAccount
-	db.Find(&accounts)
+	if err := db.Find(&accounts).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch accounts"})
+	}
+
+	// Calculate analytics for each account
+	for i := range accounts {
+		var totalOrders int64
+		var totalRevenue float64
+
+		// Join preorders through items linked to this account
+		db.Table("preorders").
+			Joins("JOIN items ON items.id = preorders.item_id").
+			Where("items.payment_account_id = ?", accounts[i].ID).
+			Count(&totalOrders)
+
+		db.Table("preorders").
+			Joins("JOIN items ON items.id = preorders.item_id").
+			Where("items.payment_account_id = ?", accounts[i].ID).
+			Select("SUM(items.price)").
+			Scan(&totalRevenue)
+
+		accounts[i].TotalOrders = totalOrders
+		accounts[i].TotalRevenue = totalRevenue
+	}
+
 	return c.JSON(accounts)
 }
 

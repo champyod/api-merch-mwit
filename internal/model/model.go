@@ -5,7 +5,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// PaymentAccount defines who receives the money for a specific product
 type PaymentAccount struct {
 	ID          uint           `gorm:"primarykey" json:"id"`
 	CreatedAt   time.Time      `json:"created_at"`
@@ -14,7 +13,10 @@ type PaymentAccount struct {
 	Name        string         `json:"name"`
 	PromptpayID string         `json:"promptpay_id"`
 	IsActive    bool           `json:"is_active" gorm:"default:true"`
-	Items       []Item         `gorm:"foreignKey:PaymentAccountID" json:"items,omitempty"`
+	
+	// Analytics (Calculated or Virtual)
+	TotalOrders  int64   `gorm:"-" json:"total_orders"`
+	TotalRevenue float64 `gorm:"-" json:"total_revenue"`
 }
 
 type Brand struct {
@@ -40,7 +42,6 @@ type Item struct {
 	Brand                  Brand   `json:"brand"`
 	Page_id                uint    `json:"page_id"`
 	
-	// New: Link to Payment Account
 	PaymentAccountID uint            `json:"payment_account_id"`
 	PaymentAccount   *PaymentAccount `json:"payment_account,omitempty"`
 }
@@ -65,25 +66,46 @@ type Color struct {
 	Item_id uint   `json:"item_id"`
 }
 
-type User struct {
-	gorm.Model
-	Username string `json:"username" gorm:"unique"`
-	Password string `json:"password" json:"-"`
-	Role     string `json:"role"`
+type Customer struct {
+	UUID      string         `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"uuid"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	GoogleID  string         `gorm:"unique;not null" json:"-"`
+	Email     string         `gorm:"unique;not null" json:"email"`
+	Name      string         `json:"name"`
+	AvatarURL string         `json:"avatar_url"`
+	Role      string         `gorm:"default:'customer'" json:"role"` // "customer" | "admin"
 }
 
 type Preorder struct {
 	gorm.Model
-	Customer_name string `json:"customer_name"`
-	Social        string `json:"social"`
-	Size          string `json:"size"`
-	Color         string `json:"color"`
-	Completed     int    `json:"completed" gorm:"default:0"`
-	Item_id       uint   `json:"item_id"`
-	Item          Item   `json:"item"`
-	
-	// New: Payment Slip URL
-	PaymentSlipURL string `json:"payment_slip_url"`
+	CustomerUUID   *string     `gorm:"type:uuid" json:"customer_uuid"`
+	Customer       *Customer   `json:"customer,omitempty"`
+	CustomerName   string      `json:"customer_name"`
+	Social         string      `json:"social"`
+	ContactNumber  string      `json:"contact_number"`
+	ShippingMethod string      `json:"shipping_method"` // "pickup" or "postal"
+	Address        string      `json:"address"`
+	Items          []OrderItem `json:"items"`
+	TotalPrice     float32     `json:"total_price"`
+	ShippingCost   float32     `json:"shipping_cost"`
+	Completed      int         `json:"completed" gorm:"default:0"`
+	PaymentSlipURL string      `json:"payment_slip_url"`
+	Status         string      `gorm:"default:'placed'" json:"status"` // placed|confirmed|packed|shipped|delivered
+	TrackingNo     string      `json:"tracking_no"`
+	Note           string      `json:"note"` // admin note to customer
+}
+
+type OrderItem struct {
+	gorm.Model
+	PreorderID uint    `json:"preorder_id"`
+	ItemID     uint    `json:"item_id"`
+	Item       Item    `json:"item"`
+	Size       string  `json:"size"`
+	Color      string  `json:"color"`
+	Quantity   int     `json:"quantity"`
+	Price      float32 `json:"price"` // Price at time of order
 }
 
 type Page struct {
@@ -92,4 +114,9 @@ type Page struct {
 	Text         string `json:"text"`
 	Order        int    `json:"order"`
 	Is_Permanent int    `json:"is_permanent"`
+}
+
+type Site struct {
+	gorm.Model
+	Image_url string `json:"image_url"`
 }
