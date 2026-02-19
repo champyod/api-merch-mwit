@@ -61,7 +61,7 @@ func UpdateCart(c *fiber.Ctx) error {
 	}
 
 	// Transactional update: clear and re-insert items for simplicity
-	return db.Transaction(func(tx *gorm.DB) error {
+	err = db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("cart_uuid = ?", cart.UUID).Unscoped().Delete(&model.CartItem{}).Error; err != nil {
 			return err
 		}
@@ -82,5 +82,11 @@ func UpdateCart(c *fiber.Ctx) error {
 			}
 		}
 		return nil
-	}) != nil && c.Status(500).JSON(fiber.Map{"hasError": true, "errorMessage": "Failed to update cart items"}) || c.JSON(fiber.Map{"hasError": false, "payload": "Cart updated"})
+	})
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"hasError": true, "errorMessage": "Failed to update cart items"})
+	}
+
+	return c.JSON(fiber.Map{"hasError": false, "payload": "Cart updated"})
 }

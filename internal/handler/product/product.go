@@ -65,10 +65,6 @@ func GetItem(c *fiber.Ctx) error {
 }
 
 func EditItem(c *fiber.Ctx) error {
-	session, err := store.Get(c)
-	if err != nil {
-		log.Fatalf("error getting session store: %v", err)
-	}
 	db := database.DB
 	productId := c.Params("itemId")
 
@@ -250,10 +246,6 @@ func GetItems(c *fiber.Ctx) error {
 }
 
 func AddItem(c *fiber.Ctx) error {
-	session, err := store.Get(c)
-	if err != nil {
-		log.Fatalf("error getting session store: %v", err)
-	}
 	db := database.DB
 
 	type ColorSize struct {
