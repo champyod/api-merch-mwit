@@ -5,7 +5,6 @@ import (
 	"api-merch-mwit/internal/model"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"time"
