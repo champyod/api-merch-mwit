@@ -2,13 +2,10 @@ package pageHandler
 
 import (
 	"api-merch-mwit/database"
-	session "api-merch-mwit/internal"
 	"api-merch-mwit/internal/model"
 
 	"github.com/gofiber/fiber/v2"
 )
-
-var store = session.Store
 
 func GetPages(c *fiber.Ctx) error {
 	db := database.DB
@@ -71,7 +68,7 @@ func AddPage(c *fiber.Ctx) error {
 	}
 
 	var lastOrderedPage model.Page
-	db.Find(&lastOrderedPage).Order("`order` DESC").Limit(1)
+	db.Order("`order` DESC").Limit(1).Find(&lastOrderedPage)
 
 	page = model.Page{
 		Text:  body.Text,

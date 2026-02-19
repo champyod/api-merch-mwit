@@ -2,13 +2,10 @@ package siteHandler
 
 import (
 	"api-merch-mwit/database"
-	session "api-merch-mwit/internal"
 	"api-merch-mwit/internal/model"
 
 	"github.com/gofiber/fiber/v2"
 )
-
-var store = session.Store
 
 func GetSite(c *fiber.Ctx) error {
 	db := database.DB
