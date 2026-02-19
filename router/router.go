@@ -9,6 +9,7 @@ import (
 	preorderHandler "api-merch-mwit/internal/handler/preorder"
 	productHandler "api-merch-mwit/internal/handler/product"
 	siteHandler "api-merch-mwit/internal/handler/site"
+	cartHandler "api-merch-mwit/internal/handler/cart"
 	"api-merch-mwit/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -34,10 +35,12 @@ func SetupRoutes(app *fiber.App) {
 	// Preorders (with optional auth)
 	api.Post("/preorders", middleware.OptionalJWTAuth, preorderHandler.AddPreorder)
 
-	// Customer orders (JWT protected)
+	// Customer orders & cart (JWT protected)
 	me := api.Group("/me", middleware.JWTAuth)
 	me.Get("/orders", orderHandler.GetMyOrders)
 	me.Get("/orders/:id", orderHandler.GetMyOrder)
+	me.Get("/cart", cartHandler.GetCart)
+	me.Post("/cart", cartHandler.UpdateCart)
 
 	// Admin (JWT + role=admin)
 	admin := api.Group("/admin", middleware.JWTAuth, middleware.AdminOnly)
