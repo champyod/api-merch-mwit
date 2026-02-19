@@ -2,14 +2,11 @@ package productHandler
 
 import (
 	"api-merch-mwit/database"
-	session "api-merch-mwit/internal"
 	"api-merch-mwit/internal/model"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
 )
-
-var store = session.Store
 
 type Size struct {
 	Size     string `json:"size"`
@@ -30,7 +27,7 @@ func GetItem(c *fiber.Ctx) error {
 	type Product struct {
 		ID                      uint        `json:"id"`
 		Page_id                 uint        `json:"page_id"`
-		Last_edited_by_username string      `json:"last_edited_by_username"`
+		Last_edited_by_name     string      `json:"last_edited_by_name"`
 		Title                   string      `json:"title"`
 		Price                   float32     `json:"price"`
 		Discount                float32     `json:"discount"`
@@ -46,8 +43,8 @@ func GetItem(c *fiber.Ctx) error {
 	var product Product
 
 	db.Table("items").Joins("JOIN brands ON items.brand_id = brands.id").
-		Joins("JOIN users ON items.last_edited_by_user_id=users.id").
-		Select("items.id, items.discount, items.discount_type, items.description, items.title, items.price, items.material, items.is_preorder, items.hidden, brands.name, users.username as last_edited_by_username, items.page_id").
+		Joins("JOIN customers ON items.last_edited_by_uuid=customers.uuid").
+		Select("items.id, items.discount, items.discount_type, items.description, items.title, items.price, items.material, items.is_preorder, items.hidden, brands.name, customers.name as last_edited_by_name, items.page_id").
 		Where("items.id = ?", productId).
 		Scan(&product)
 
@@ -126,16 +123,16 @@ func EditItem(c *fiber.Ctx) error {
 	var item model.Item
 	db.Where("id = ?", productId).Find(&item)
 
-	// Get current session user's `ID`
-	userId, userIdOk := session.Get("userId").(uint)
-	if !userIdOk {
+	// Get current session user's `UUID`
+	customerUUID, ok := c.Locals("customerUUID").(string)
+	if !ok {
 		return c.Status(403).JSON(fiber.Map{
-			"hasError": true, "metadata": nil, "errorMessage": "Internal server error", "payload": nil,
+			"hasError": true, "metadata": nil, "errorMessage": "Unauthorized", "payload": nil,
 		})
 	}
 
 	// Update item with new values, then update in db
-	item.Last_edited_by_user_id = userId
+	item.LastEditedByUUID = customerUUID
 	item.Brand_id = brand.ID
 	item.Page_id = uint(product.PageId)
 	item.Title = product.Title
@@ -209,7 +206,7 @@ func GetItems(c *fiber.Ctx) error {
 	type Item struct {
 		ID                      int     `json:"id"`
 		Name                    string  `json:"name"`
-		Last_edited_by_username string  `json:"last_edited_by_username"`
+		Last_edited_by_name     string  `json:"last_edited_by_name"`
 		Title                   string  `json:"title"`
 		Price                   float32 `json:"price"`
 		Discount                float32 `json:"discount"`
@@ -231,19 +228,19 @@ func GetItems(c *fiber.Ctx) error {
 	if brandName != "" {
 		db.Joins("JOIN brands ON items.brand_id=brands.id").
 			Joins("JOIN images ON items.id=images.item_id").
-			Joins("JOIN users ON items.last_edited_by_user_id=users.id").
+			Joins("JOIN customers ON items.last_edited_by_uuid=customers.uuid").
 			Joins("LEFT JOIN pages ON pages.id=items.page_id").
 			Where("brands.name = ?", brandName).
-			Select("items.id, items.title, items.hidden, items.price, images.url, brands.name, items.discount, items.discount_type, users.username as last_edited_by_username, items.page_id, pages.slug, pages.text").
+			Select("items.id, items.title, items.hidden, items.price, images.url, brands.name, items.discount, items.discount_type, customers.name as last_edited_by_name, items.page_id, pages.slug, pages.text").
 			Group("items.id").
 			Order("items.page_id, items.created_at DESC").
 			Find(&items)
 	} else {
 		db.Joins("JOIN brands ON items.brand_id=brands.id").
 			Joins("JOIN images ON items.id=images.item_id").
-			Joins("JOIN users ON items.last_edited_by_user_id=users.id").
+			Joins("JOIN customers ON items.last_edited_by_uuid=customers.uuid").
 			Joins("LEFT JOIN pages ON pages.id=items.page_id").
-			Select("items.id, items.title, items.hidden, items.price, images.url, brands.name, items.discount, items.discount_type, users.username as last_edited_by_username, items.page_id, pages.slug, pages.text").
+			Select("items.id, items.title, items.hidden, items.price, images.url, brands.name, items.discount, items.discount_type, customers.name as last_edited_by_name, items.page_id, pages.slug, pages.text").
 			Group("items.id").
 			Order("items.page_id, items.created_at DESC").
 			Find(&items)
@@ -307,11 +304,11 @@ func AddItem(c *fiber.Ctx) error {
 		hidden = 1
 	}
 
-	// Get current session's user `ID`
-	userId, userIdOk := session.Get("userId").(uint)
-	if !userIdOk {
+	// Get current session user's `UUID`
+	customerUUID, ok := c.Locals("customerUUID").(string)
+	if !ok {
 		return c.Status(403).JSON(fiber.Map{
-			"hasError": true, "metadata": nil, "errorMessage": "Internal server error", "payload": nil,
+			"hasError": true, "metadata": nil, "errorMessage": "Unauthorized", "payload": nil,
 		})
 	}
 
@@ -326,7 +323,7 @@ func AddItem(c *fiber.Ctx) error {
 		Material:               product.Material,
 		Hidden:                 hidden,
 		Is_preorder:            isPreorder,
-		Last_edited_by_user_id: userId,
+		LastEditedByUUID:       customerUUID,
 		PaymentAccountID:       product.PaymentAccountID,
 	}
 	if err := db.Create(&item).Error; err != nil {
