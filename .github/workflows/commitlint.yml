@@ -1,0 +1,39 @@
+name: Commit Lint
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  commitlint:
+    name: Validate Commit Messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit messages
+        run: |
+          PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'
+          ERRORS=0
+
+          for SHA in $(git log --format=%H origin/${{ github.base_ref }}..${{ github.head_ref }}); do
+            MSG=$(git log --format=%s -1 "$SHA")
+            if ! echo "$MSG" | grep -qE "$PATTERN"; then
+              echo "❌ Bad commit message: $MSG"
+              echo "   SHA: $SHA"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo ""
+            echo "Commit messages must follow Conventional Commits:"
+            echo "  <type>(<scope>): <description>"
+            echo ""
+            echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+            exit 1
+          fi
+
+          echo "✅ All commit messages follow conventional commits"

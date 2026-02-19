@@ -1,0 +1,103 @@
+name: Create and publish a Docker image
+
+on:
+  push:
+    branches:
+      - 'release/*'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine environment and tags
+        id: env-tags
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          ENV_SUFFIX="${BRANCH_NAME#release/}"
+
+          if [ "$ENV_SUFFIX" = "beta" ]; then
+            PRIMARY_TAG="release-beta"
+            COUNTERPART_TAG="release-prod"
+          elif [ "$ENV_SUFFIX" = "prod" ]; then
+            PRIMARY_TAG="release-prod"
+            COUNTERPART_TAG="release-beta"
+          else
+            PRIMARY_TAG="release-${ENV_SUFFIX}"
+            COUNTERPART_TAG=""
+          fi
+
+          GIT_SHA=$(git rev-parse --short HEAD)
+
+          echo "primary_tag=${PRIMARY_TAG}" >> $GITHUB_OUTPUT
+          echo "counterpart_tag=${COUNTERPART_TAG}" >> $GITHUB_OUTPUT
+          echo "git_sha=${GIT_SHA}" >> $GITHUB_OUTPUT
+          echo "full_image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
+
+      - name: Check if counterpart image exists
+        id: check-counterpart
+        continue-on-error: true
+        run: |
+          if [ -z "${{ steps.env-tags.outputs.counterpart_tag }}" ]; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          COUNTERPART_IMAGE="${{ steps.env-tags.outputs.full_image }}:${{ steps.env-tags.outputs.counterpart_tag }}"
+
+          if docker pull "${COUNTERPART_IMAGE}" 2>/dev/null; then
+            COUNTERPART_SHA=$(docker inspect "${COUNTERPART_IMAGE}" --format='{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null || echo "")
+            CURRENT_SHA="${{ steps.env-tags.outputs.git_sha }}"
+
+            if [ "${COUNTERPART_SHA:0:7}" = "${CURRENT_SHA:0:7}" ]; then
+              echo "exists=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+
+          echo "exists=false" >> $GITHUB_OUTPUT
+
+      - name: Re-tag and push existing image
+        if: steps.check-counterpart.outputs.exists == 'true'
+        run: |
+          COUNTERPART_IMAGE="${{ steps.env-tags.outputs.full_image }}:${{ steps.env-tags.outputs.counterpart_tag }}"
+          PRIMARY_IMAGE="${{ steps.env-tags.outputs.full_image }}:${{ steps.env-tags.outputs.primary_tag }}"
+          docker tag "${COUNTERPART_IMAGE}" "${PRIMARY_IMAGE}"
+          docker push "${PRIMARY_IMAGE}"
+
+      - name: Set up Docker Buildx
+        if: steps.check-counterpart.outputs.exists != 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push new Docker image
+        if: steps.check-counterpart.outputs.exists != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.env-tags.outputs.full_image }}:${{ steps.env-tags.outputs.primary_tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.env-tags.outputs.git_sha }}
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
