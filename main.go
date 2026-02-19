@@ -17,9 +17,9 @@ import (
 )
 
 func main() {
-	err := godotenv.Load(".env")
+	err := godotenv.Load(".env.local")
 	if err != nil {
-		log.Fatal("error loading .env file")
+		godotenv.Load(".env")
 	}
 
 	app := fiber.New()
@@ -31,7 +31,7 @@ func main() {
 
 	// CORS
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     os.Getenv("APP_URL"),
+		AllowOrigins:     os.Getenv("FRONTEND_URL"),
 		AllowCredentials: true,
 	}))
 
