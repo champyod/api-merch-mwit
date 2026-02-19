@@ -2,7 +2,7 @@
 
 DB_URL=postgres://user:password@localhost:5432/merch_db?sslmode=disable
 
-.PHONY: dev build test migrate-diff migrate-apply docker-build docker-run
+.PHONY: dev build test migrate-diff migrate-apply docker-up docker-build docker-run docker-push
 
 dev:
 	go run main.go
@@ -24,11 +24,14 @@ migrate-apply:
 	  --dir "file://migrations" \
 	  --url "$(DB_URL)"
 
+docker-up:
+	docker compose up -d
+
 docker-build:
-	docker build -t api-merch-mwit .
+	docker compose up -d --build api
 
 docker-run:
-	docker run -p 8080:8080 --env-file .env.local api-merch-mwit
+	docker compose up api
 
 docker-push:
-	docker push api-merch-mwit
+	docker compose push api
