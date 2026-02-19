@@ -34,7 +34,7 @@ type Item struct {
 	Material               string  `json:"material"`
 	Is_preorder            int     `json:"is_preorder"`
 	Hidden                 int     `json:"hidden"`
-	Last_edited_by_user_id uint    `json:"last_edited_by_user_id"`
+	LastEditedByUUID       string  `gorm:"type:uuid" json:"last_edited_by_uuid"`
 	Images                 []Image `json:"images"`
 	Colors                 []Color `json:"colors"`
 	Sizes                  []Size  `json:"sizes"`
@@ -119,4 +119,27 @@ type Page struct {
 type Site struct {
 	gorm.Model
 	Image_url string `json:"image_url"`
+}
+
+type Cart struct {
+	UUID         string         `gorm:"primaryKey;type:uuid" json:"uuid"`
+	CustomerUUID string         `gorm:"unique;not null;type:uuid" json:"customer_uuid"`
+	Customer     Customer       `json:"-"`
+	Items        []CartItem     `gorm:"foreignKey:CartUUID" json:"items"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+type CartItem struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CartUUID  string         `gorm:"type:uuid;not null" json:"-"`
+	ItemID    uint           `json:"item_id"`
+	Item      Item           `json:"item"`
+	Size      string         `json:"size"`
+	Color     string         `json:"color"`
+	Quantity  int            `json:"quantity"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }

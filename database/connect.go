@@ -55,6 +55,8 @@ func Connect() {
 		&model.Color{},
 		&model.Preorder{},
 		&model.OrderItem{},
+		&model.Cart{},
+		&model.CartItem{},
 		&model.Page{},
 		&model.PaymentAccount{},
 		&model.Site{},
